@@ -17,18 +17,18 @@ async function runAction() {
   let version
 
   if (input.version.toLowerCase() === 'latest') {
-    core.debug('Requesting latest DNSControl version...')
+    core.debug('Requesting latest Rain version...')
     version = await getLatestVersion()
     core.debug(`Latest version: ${version}`)
   } else {
     version = input.version
   }
 
-  core.startGroup('💾 Install DNSControl')
+  core.startGroup('Install Rain')
   await doInstall(version)
   core.endGroup()
 
-  core.startGroup('🧪 Installation check')
+  core.startGroup('Installation check')
   await doCheck()
   core.endGroup()
 }
@@ -41,8 +41,8 @@ async function runAction() {
  * @throws {Error}
  */
 async function doInstall(version) {
-  const pathToInstall = path.join(os.tmpdir(), `dnscontrol-${version}`)
-  const cacheKey = `dnscontrol-cache-${version}-${process.platform}-${process.arch}`
+  const pathToInstall = path.join(os.tmpdir(), `rain-${version}`)
+  const cacheKey = `rain-cache-${version}-${process.platform}-${process.arch}`
 
   core.info(`Version to install: ${version} (target directory: ${pathToInstall})`)
 
@@ -56,26 +56,17 @@ async function doInstall(version) {
   }
 
   if (restoredFromCache) { // cache HIT
-    core.info(`👌 DNSControl restored from cache`)
+    core.info(`Rain restored from cache`)
   } else { // cache MISS
     const distUri = getDistUrl(process.platform, process.arch, version)
     const distPath = await tc.downloadTool(distUri)
-    const pathToUnpack = path.join(os.tmpdir(), `dnscontrol.tmp`)
+    const pathToUnpack = path.join(os.tmpdir(), `rain.tmp`)
 
-    switch (true) {
-      case distUri.endsWith('tar.gz'):
-        await tc.extractTar(distPath, pathToUnpack)
-        await io.mv(path.join(pathToUnpack, `dnscontrol`), path.join(pathToInstall, `dnscontrol`))
-        break
+    // Rain releases are all .zip files
+    await tc.extractZip(distPath, pathToUnpack)
 
-      case distUri.endsWith('zip'):
-        await tc.extractZip(distPath, pathToUnpack)
-        await io.mv(path.join(pathToUnpack, `dnscontrol.exe`), path.join(pathToInstall, `dnscontrol.exe`))
-        break
-
-      default:
-        throw new Error('Unsupported distributive format')
-    }
+    const binName = process.platform === 'win32' ? 'rain.exe' : 'rain'
+    await io.mv(path.join(pathToUnpack, binName), path.join(pathToInstall, binName))
 
     await io.rmRF(distPath)
 
@@ -95,28 +86,27 @@ async function doInstall(version) {
  * @throws {Error} If binary file not found in $PATH or version check failed
  */
 async function doCheck() {
-  const binPath = await io.which('dnscontrol', true)
+  const binPath = await io.which('rain', true)
 
   if (binPath === '') {
-    throw new Error('dnscontrol binary file not found in $PATH')
+    throw new Error('rain binary file not found in $PATH')
   }
 
-  await exec.exec('dnscontrol', ['version'], {silent: true})
+  await exec.exec('rain', ['--version'], {silent: true})
 
-  core.setOutput('dnscontrol-bin', binPath)
-  core.info(`DNSControl installed: ${binPath}`)
+  core.setOutput('rain-bin', binPath)
+  core.info(`Rain installed: ${binPath}`)
 }
 
 /**
- * @param {string} githubAuthToken
  * @returns {Promise<string>}
  */
 async function getLatestVersion() {
   // use the "magic" GitHub link to get the latest release tag (it returns a 302 redirect with the tag in
   // the location header). this "hack" allows us to avoid the GitHub API rate limits
-  const resp = await new http.HttpClient('gacts/install-dnscontrol', undefined, {
+  const resp = await new http.HttpClient('allixsenos/install-rain', undefined, {
     allowRedirects: false,
-  }).get('https://github.com/StackExchange/dnscontrol/releases/latest')
+  }).get('https://github.com/aws-cloudformation/rain/releases/latest')
 
   if (resp.message.statusCode !== 302) {
     throw new Error(`Failed to fetch latest version: ${resp.message.statusCode} ${resp.message.statusMessage}`)
@@ -135,27 +125,33 @@ async function getLatestVersion() {
 }
 
 /**
- * @link https://github.com/StackExchange/dnscontrol/releases
+ * @link https://github.com/aws-cloudformation/rain/releases
  *
  * @param {('linux'|'darwin'|'win32')} platform
  * @param {('x32'|'x64'|'arm'|'arm64')} arch
- * @param {string} version E.g.: `1.2.6`
+ * @param {string} version E.g.: `1.24.2`
  *
  * @returns {string}
  *
  * @throws {Error} Unsupported platform or architecture
  */
 function getDistUrl(platform, arch, version) {
-  const baseUrl = `https://github.com/StackExchange/dnscontrol/releases/download/v${version}`
+  const baseUrl = `https://github.com/aws-cloudformation/rain/releases/download/v${version}`
 
   switch (platform) {
     case 'linux': {
       switch (arch) {
         case 'x64': // Amd64
-          return `${baseUrl}/dnscontrol_${version}_linux_amd64.tar.gz`
+          return `${baseUrl}/rain-v${version}_linux-amd64.zip`
 
         case 'arm64':
-          return `${baseUrl}/dnscontrol_${version}_linux_arm64.tar.gz`
+          return `${baseUrl}/rain-v${version}_linux-arm64.zip`
+
+        case 'arm':
+          return `${baseUrl}/rain-v${version}_linux-arm.zip`
+
+        case 'x32':
+          return `${baseUrl}/rain-v${version}_linux-i386.zip`
       }
 
       throw new Error(`Unsupported linux architecture (${arch})`)
@@ -164,8 +160,10 @@ function getDistUrl(platform, arch, version) {
     case 'darwin': {
       switch (arch) {
         case 'x64': // Amd64
+          return `${baseUrl}/rain-v${version}_darwin-amd64.zip`
+
         case 'arm64':
-          return `${baseUrl}/dnscontrol_${version}_darwin_all.tar.gz`
+          return `${baseUrl}/rain-v${version}_darwin-arm64.zip`
       }
 
       throw new Error(`Unsupported macOS architecture (${arch})`)
@@ -174,13 +172,13 @@ function getDistUrl(platform, arch, version) {
     case 'win32': {
       switch (arch) {
         case 'x64': // Amd64
-          return `${baseUrl}/dnscontrol_${version}_windows_amd64.zip`
+          return `${baseUrl}/rain-v${version}_windows-amd64.zip`
 
-        case 'arm64':
-          return `${baseUrl}/dnscontrol_${version}_windows_arm64.zip`
+        case 'x32':
+          return `${baseUrl}/rain-v${version}_windows-i386.zip`
       }
 
-      throw new Error(`Unsupported platform (${platform})`)
+      throw new Error(`Unsupported Windows architecture (${arch})`)
     }
   }
 

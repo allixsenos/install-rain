@@ -1,6 +1,6 @@
 {
-  "name": "install-dnscontrol",
-  "description": "Installs DNSControl file into your actions workflow",
+  "name": "install-rain",
+  "description": "Installs AWS CloudFormation Rain into your actions workflow",
   "main": "src/index.js",
   "scripts": {
     "lint": "eslint './src/**/*.js'",
@@ -8,20 +8,22 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/gacts/install-dnscontrol.git"
+    "url": "git+https://github.com/allixsenos/install-rain.git"
   },
   "keywords": [
     "GitHub",
     "Actions",
-    "DNSControl"
+    "Rain",
+    "AWS",
+    "CloudFormation"
   ],
   "author": "",
   "type": "module",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/gacts/install-dnscontrol/issues"
+    "url": "https://github.com/allixsenos/install-rain/issues"
   },
-  "homepage": "https://github.com/gacts/install-dnscontrol#readme",
+  "homepage": "https://github.com/allixsenos/install-rain#readme",
   "dependencies": {
     "@actions/cache": "^4.1.0",
     "@actions/core": "^1.11.1",
