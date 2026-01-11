@@ -65,8 +65,12 @@ async function doInstall(version) {
     // Rain releases are all .zip files
     await tc.extractZip(distPath, pathToUnpack)
 
+    // Rain binaries are inside a subdirectory named like rain-v{version}_{platform}-{arch}
+    const subDir = getDistSubdir(process.platform, process.arch, version)
     const binName = process.platform === 'win32' ? 'rain.exe' : 'rain'
-    await io.mv(path.join(pathToUnpack, binName), path.join(pathToInstall, binName))
+
+    await io.mkdirP(pathToInstall)
+    await io.mv(path.join(pathToUnpack, subDir, binName), path.join(pathToInstall, binName))
 
     await io.rmRF(distPath)
 
@@ -122,6 +126,39 @@ async function getLatestVersion() {
   const tag = parts[5]
 
   return tag.replace(/^[vV]/, '') // strip the 'v' prefix
+}
+
+/**
+ * Get the subdirectory name inside the zip file
+ *
+ * @param {('linux'|'darwin'|'win32')} platform
+ * @param {('x32'|'x64'|'arm'|'arm64')} arch
+ * @param {string} version E.g.: `1.24.2`
+ *
+ * @returns {string}
+ */
+function getDistSubdir(platform, arch, version) {
+  const platformName = platform === 'win32' ? 'windows' : platform
+  let archName
+
+  switch (arch) {
+    case 'x64':
+      archName = 'amd64'
+      break
+    case 'x32':
+      archName = 'i386'
+      break
+    case 'arm64':
+      archName = 'arm64'
+      break
+    case 'arm':
+      archName = 'arm'
+      break
+    default:
+      archName = arch
+  }
+
+  return `rain-v${version}_${platformName}-${archName}`
 }
 
 /**
