@@ -1,15 +1,15 @@
-import core from '@actions/core' // docs: https://github.com/actions/toolkit/tree/main/packages/core
-import tc from '@actions/tool-cache' // docs: https://github.com/actions/toolkit/tree/main/packages/tool-cache
-import io from '@actions/io' // docs: https://github.com/actions/toolkit/tree/main/packages/io
-import cache from '@actions/cache' // docs: https://github.com/actions/toolkit/tree/main/packages/cache
-import exec from '@actions/exec' // docs: https://github.com/actions/toolkit/tree/main/packages/exec
+import {getInput, debug, info, warning, startGroup, endGroup, addPath, setOutput, setFailed} from '@actions/core' // docs: https://github.com/actions/toolkit/tree/main/packages/core
+import {downloadTool, extractZip} from '@actions/tool-cache' // docs: https://github.com/actions/toolkit/tree/main/packages/tool-cache
+import {mkdirP, mv, rmRF, which} from '@actions/io' // docs: https://github.com/actions/toolkit/tree/main/packages/io
+import {restoreCache, saveCache} from '@actions/cache' // docs: https://github.com/actions/toolkit/tree/main/packages/cache
+import {exec} from '@actions/exec' // docs: https://github.com/actions/toolkit/tree/main/packages/exec
 import path from 'path'
 import os from 'os'
-import http from '@actions/http-client' // https://github.com/actions/toolkit/tree/main/packages/http-client
+import {HttpClient} from '@actions/http-client' // https://github.com/actions/toolkit/tree/main/packages/http-client
 
 // read action inputs
 const input = {
-  version: core.getInput('version', {required: true}).replace(/^[vV]/, ''), // strip the 'v' prefix
+  version: getInput('version', {required: true}).replace(/^[vV]/, ''), // strip the 'v' prefix
 }
 
 // main action entrypoint
@@ -17,20 +17,20 @@ async function runAction() {
   let version
 
   if (input.version.toLowerCase() === 'latest') {
-    core.debug('Requesting latest Rain version...')
+    debug('Requesting latest Rain version...')
     version = await getLatestVersion()
-    core.debug(`Latest version: ${version}`)
+    debug(`Latest version: ${version}`)
   } else {
     version = input.version
   }
 
-  core.startGroup('Install Rain')
+  startGroup('Install Rain')
   await doInstall(version)
-  core.endGroup()
+  endGroup()
 
-  core.startGroup('Installation check')
+  startGroup('Installation check')
   await doCheck()
-  core.endGroup()
+  endGroup()
 }
 
 /**
@@ -44,44 +44,44 @@ async function doInstall(version) {
   const pathToInstall = path.join(os.tmpdir(), `rain-${version}`)
   const cacheKey = `rain-cache-${version}-${process.platform}-${process.arch}`
 
-  core.info(`Version to install: ${version} (target directory: ${pathToInstall})`)
+  info(`Version to install: ${version} (target directory: ${pathToInstall})`)
 
   /** @type {string|undefined} */
   let restoredFromCache = undefined
 
   try {
-    restoredFromCache = await cache.restoreCache([pathToInstall], cacheKey)
+    restoredFromCache = await restoreCache([pathToInstall], cacheKey)
   } catch (e) {
-    core.warning(e)
+    warning(e)
   }
 
   if (restoredFromCache) { // cache HIT
-    core.info(`Rain restored from cache`)
+    info(`Rain restored from cache`)
   } else { // cache MISS
     const distUri = getDistUrl(process.platform, process.arch, version)
-    const distPath = await tc.downloadTool(distUri)
+    const distPath = await downloadTool(distUri)
     const pathToUnpack = path.join(os.tmpdir(), `rain.tmp`)
 
     // Rain releases are all .zip files
-    await tc.extractZip(distPath, pathToUnpack)
+    await extractZip(distPath, pathToUnpack)
 
     // Rain binaries are inside a subdirectory named like rain-v{version}_{platform}-{arch}
     const subDir = getDistSubdir(process.platform, process.arch, version)
     const binName = process.platform === 'win32' ? 'rain.exe' : 'rain'
 
-    await io.mkdirP(pathToInstall)
-    await io.mv(path.join(pathToUnpack, subDir, binName), path.join(pathToInstall, binName))
+    await mkdirP(pathToInstall)
+    await mv(path.join(pathToUnpack, subDir, binName), path.join(pathToInstall, binName))
 
-    await io.rmRF(distPath)
+    await rmRF(distPath)
 
     try {
-      await cache.saveCache([pathToInstall], cacheKey)
+      await saveCache([pathToInstall], cacheKey)
     } catch (e) {
-      core.warning(e)
+      warning(e)
     }
   }
 
-  core.addPath(pathToInstall)
+  addPath(pathToInstall)
 }
 
 /**
@@ -90,16 +90,16 @@ async function doInstall(version) {
  * @throws {Error} If binary file not found in $PATH or version check failed
  */
 async function doCheck() {
-  const binPath = await io.which('rain', true)
+  const binPath = await which('rain', true)
 
   if (binPath === '') {
     throw new Error('rain binary file not found in $PATH')
   }
 
-  await exec.exec('rain', ['--version'], {silent: true})
+  await exec('rain', ['--version'], {silent: true})
 
-  core.setOutput('rain-bin', binPath)
-  core.info(`Rain installed: ${binPath}`)
+  setOutput('rain-bin', binPath)
+  info(`Rain installed: ${binPath}`)
 }
 
 /**
@@ -108,7 +108,7 @@ async function doCheck() {
 async function getLatestVersion() {
   // use the "magic" GitHub link to get the latest release tag (it returns a 302 redirect with the tag in
   // the location header). this "hack" allows us to avoid the GitHub API rate limits
-  const resp = await new http.HttpClient('allixsenos/install-rain', undefined, {
+  const resp = await new HttpClient('allixsenos/install-rain', undefined, {
     allowRedirects: false,
   }).get('https://github.com/aws-cloudformation/rain/releases/latest')
 
@@ -226,5 +226,5 @@ function getDistUrl(platform, arch, version) {
 (async () => {
   await runAction()
 })().catch(error => {
-  core.setFailed(error.message)
+  setFailed(error.message)
 })
