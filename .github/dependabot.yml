@@ -8,6 +8,8 @@ updates:
     directory: /
     schedule: {interval: monthly, time: '02:00', timezone: 'Etc/UTC'}
     cooldown: {default-days: 2, semver-major-days: 10, semver-minor-days: 4, semver-patch-days: 2}
+    # production deps ship inside dist/, so their bumps must cut a release; dev deps must not
+    commit-message: {prefix: 'fix(deps)', prefix-development: 'build(deps)'}
     groups:
       npm-production: {dependency-type: production}
       npm-development: {dependency-type: development}
@@ -16,5 +18,6 @@ updates:
     directory: /
     schedule: {interval: monthly, time: '02:00', timezone: 'Etc/UTC'}
     cooldown: {default-days: 2}
+    commit-message: {prefix: 'ci(deps)'}
     groups:
       github-actions: {patterns: ['*']}
