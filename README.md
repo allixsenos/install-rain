@@ -42,13 +42,19 @@ The following inputs can be used as `step.with` keys:
 
 ## Releasing
 
+[release-please](https://github.com/googleapis/release-please) makes the releases. It reads the [Conventional Commits](https://www.conventionalcommits.org/) on `master`:
+
+- `feat:` makes a minor release, and `fix:` makes a patch release.
+- Dependabot uses `fix(deps):` for production dependencies, because they ship inside `dist/`. Development dependencies use `build(deps):` and do not make a release.
+- Other types (`build:`, `ci:`, `docs:`, `refactor:`, `chore:`) do not make a release.
+
 To release a new version:
 
-- Build the action distribution (`make build` or `npm run build`).
-- Commit and push changes (including `dist` directory changes - this is important) to the `master|main` branch.
-- Publish the new release using the repo releases page (the git tag should follow the `vX.Y.Z` format).
+1. Commit the source changes and the rebuilt `dist/` directory to `master`. The `dist/` directory is important, because the action runs from it.
+2. release-please opens or updates a release PR with the version bump and the `CHANGELOG.md` entry.
+3. Merge the release PR. release-please creates the `vX.Y.Z` tag and the GitHub release. The same workflow then moves the major and minor git tags (`v1` and `v1.2` for a `v1.2.Z` release).
 
-Major and minor git tags (`v1` and `v1.2` if you publish a `v1.2.Z` release) will be updated automatically.
+To force a version, add a `Release-As: X.Y.Z` footer to a commit on `master`.
 
 > [!TIP]
 > Use [Dependabot](https://bit.ly/45zwLL1) to keep this action updated in your repository.
