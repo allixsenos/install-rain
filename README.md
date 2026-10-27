@@ -4,6 +4,17 @@
 [![Build Status][badge_build]][link_build]
 [![License][badge_license]][link_license]
 
+> [!WARNING]
+> **This action is deprecated.** AWS archived Rain on 2026-07-29, and Rain gets no more releases. This action continues to install Rain, so your workflows do not break. But it shows a warning on each run.
+>
+> Use [awesome-foundation/install-cfnrain](https://github.com/awesome-foundation/install-cfnrain) in its place. It installs [cfnrain](https://github.com/awesome-foundation/cfnrain), the community fork of Rain, and it verifies the download. Change the step:
+>
+> ```yaml
+> - uses: awesome-foundation/install-cfnrain@v1
+>   with:
+>     rain-alias: true # scripts that call rain keep working
+> ```
+
 This action installs [Rain][rain] (AWS CloudFormation development toolkit) as a binary file into your workflow. It can be run on **Linux** (`ubuntu-latest`), **macOS** (`macos-latest`) or **Windows** (`windows-latest`).
 
 - Rain releases page: <https://github.com/aws-cloudformation/rain/releases>

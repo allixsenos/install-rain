@@ -14,6 +14,15 @@ const input = {
 
 // main action entrypoint
 async function runAction() {
+  // a warning only: the action keeps installing Rain, so no workflow breaks
+  warning(
+    'AWS archived Rain, and Rain gets no more releases. This action still installs Rain, but it is deprecated. ' +
+    'Use awesome-foundation/install-cfnrain@v1 to install cfnrain, the community fork. ' +
+    'Set rain-alias: true there, so scripts that call rain keep working. ' +
+    'See https://github.com/awesome-foundation/install-cfnrain#move-from-install-rain',
+    {title: 'install-rain is deprecated'},
+  )
+
   let version
 
   if (input.version.toLowerCase() === 'latest') {
